@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 /**
  * A simple implementation of a list using a dynamic array to store elements.
  * This custom ArrayList class mimics some of the functionalities of the Java Collection Framework's ArrayList,
@@ -141,5 +143,10 @@ public class ArrayList<E> implements List<E> {
     @Override
     public int size() {
         return size;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return size == 0;
     }
 }

@@ -56,4 +56,6 @@ public interface List<E> {
      * The list will be empty after this call returns.
      */
     void clear();
+
+    boolean isEmpty();
 }

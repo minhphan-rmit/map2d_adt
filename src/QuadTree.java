@@ -1,7 +1,7 @@
 public class QuadTree {
-    private static final int MAX_CAPACITY = 100_000_000;
+    private static final int MAX_CAPACITY = 10_000_000;
     private final int level;
-    private final List<Place> places;
+    private final KDTree places; // Using KDTree instead of List<Place>
     private final int x, y, width, height;
     private final QuadTree[] children;
 
@@ -11,13 +11,12 @@ public class QuadTree {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.places = new ArrayList<>();
+        this.places = new KDTree(); // Initialize KDTree here
         this.children = new QuadTree[4];
         init();
     }
 
     private void init() {
-        // Recursively split until the potential place count per area becomes manageable
         if (width * height / MAX_CAPACITY > 1 && width > 1 && height > 1) {
             split();
             for (QuadTree child : children) {
@@ -44,11 +43,73 @@ public class QuadTree {
             int index = getIndex(place.x, place.y);
             children[index].insert(place);
         } else {
-            if (places.size() >= MAX_CAPACITY) {
-                throw new RuntimeException("Exceeded maximum capacity at a single point");
-            }
-            places.add(place);
+            places.add(place); // Adding to KDTree
         }
+    }
+
+    public boolean delete(Place place) {
+        if (!contains(place.x, place.y)) {
+            return false;
+        }
+
+        if (children[0] != null) {
+            int index = getIndex(place.x, place.y);
+            return children[index].delete(place);
+        } else {
+            return places.delete(place.x, place.y); // Using KDTree for deletion
+        }
+    }
+
+    public boolean addService(int x, int y, ServiceType service) {
+        if (!contains(x, y)) {
+            return false;
+        }
+        if (children[0] != null) {
+            int index = getIndex(x, y);
+            return children[index].addService(x, y, service);
+        } else {
+            return places.addServiceToPoint(x, y, service);
+        }
+    }
+
+    public boolean removeService(int x, int y, ServiceType service) {
+        if (!contains(x, y)) {
+            return false;
+        }
+        if (children[0] != null) {
+            int index = getIndex(x, y);
+            return children[index].removeService(x, y, service);
+        } else {
+            return places.removeServiceFromPoint(x, y, service);
+        }
+    }
+
+    public List<int[]> findPlacesByService(int currentX, int currentY, double walkingDistance, ServiceType serviceType) {
+        Rectangle searchArea = new Rectangle(currentX - (int) walkingDistance, currentY - (int) walkingDistance,
+                (int) (2 * walkingDistance), (int) (2 * walkingDistance));
+        ArrayList<int[]> found = new ArrayList<>();
+        query(searchArea, serviceType, found);
+        return found;
+    }
+
+    private void query(Rectangle range, ServiceType serviceType, List<int[]> found) {
+        if (!intersects(range)) {
+            return;
+        }
+
+        if (children[0] == null) {
+            // If this is a leaf node, use the KDTree to perform a refined search
+            places.searchByServiceWithinBounds(range, serviceType, found);
+        } else {
+            // Otherwise, recursively query the appropriate children
+            for (QuadTree child : children) {
+                child.query(range, serviceType, found);
+            }
+        }
+    }
+
+    private boolean contains(int px, int py) {
+        return px >= x && py >= y && px < x + width && py < y + height;
     }
 
     private int getIndex(int px, int py) {
@@ -64,144 +125,10 @@ public class QuadTree {
         }
     }
 
-    private boolean contains(int px, int py) {
-        return px >= x && py >= y && px < x + width && py < y + height;
-    }
-
-    public boolean delete(Place place) {
-        if (!contains(place.x, place.y)) {
-            return false;
-        }
-
-        for (int i = 0; i < places.size(); i++) {
-            if (places.get(i).equals(place)) {
-                places.removeAt(i);
-                return true;
-            }
-        }
-
-        if (children[0] != null) {
-            int index = getIndex(place.x, place.y);
-            return children[index].delete(place);
-        }
-
-        return false;
-    }
-
-    public boolean addService(Place place, ServiceType service) {
-        if (findPlace(place)) {
-            place.addService(service);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean removeService(Place place, ServiceType service) {
-        if (findPlace(place)) {
-            place.removeService(service);
-            return true;
-        }
-        return false;
-    }
-
-    private boolean findPlace(Place target) {
-        return findPlaceHelper(target, this);
-    }
-
-    private boolean findPlaceHelper(Place target, QuadTree node) {
-        if (node == null) {
-            return false;
-        }
-
-        for (int i = 0; i < node.places.size(); i++) {
-            if (node.places.get(i).equals(target)) {
-                return true;
-            }
-        }
-
-        if (node.children[0] != null) {
-            int index = node.getIndex(target.x, target.y);
-            return findPlaceHelper(target, node.children[index]);
-        }
-
-        return false;
-    }
-
-    public List<Place> query(Rectangle range, List<Place> found) {
-        if (!intersects(range.x, range.y, range.width, range.height)) {
-            return found;
-        }
-
-        for (int i = 0; i < places.size(); i++) {
-            Place place = places.get(i);
-            if (range.contains(place.x, place.y)) {
-                found.add(place);
-            }
-        }
-
-        if (children[0] != null) {
-            for (QuadTree child : children) {
-                child.query(range, found);
-            }
-        }
-
-        return found;
-    }
-
-    public List<Place> boundedQuery(int userX, int userY, double maxDistance, ServiceType serviceType) {
-        int radius = (int) maxDistance;
-        Rectangle searchArea = new Rectangle(userX - radius, userY - radius, 2 * radius, 2 * radius);
-        List<Place> results = query(searchArea, new ArrayList<>());
-        ArrayList<Place> filteredResults = new ArrayList<>();
-        for (int i = 0; i < results.size(); i++) {
-            Place place = results.get(i);
-            if (place.offersService(serviceType) && distance(userX, userY, place.x, place.y) <= maxDistance) {
-                filteredResults.add(place);
-            }
-        }
-        // Selection sort by distance for simplicity
-        for (int i = 0; i < filteredResults.size() - 1; i++) {
-            int minIdx = i;
-            for (int j = i + 1; j < filteredResults.size(); j++) {
-                if (distance(userX, userY, filteredResults.get(j).x, filteredResults.get(j).y) < distance(userX, userY, filteredResults.get(minIdx).x, filteredResults.get(minIdx).y)) {
-                    minIdx = j;
-                }
-            }
-            Place temp = filteredResults.get(minIdx);
-            filteredResults.set(minIdx, filteredResults.get(i));
-            filteredResults.set(i, temp);
-        }
-        return filteredResults;
-    }
-
-    public List<Place> serviceQuery(int userX, int userY, ServiceType serviceType, int k) {
-        double largeSearchRadius = 10000;  // Arbitrary large radius
-        Rectangle searchArea = new Rectangle(userX - (int) largeSearchRadius, userY - (int) largeSearchRadius, (int) (2 * largeSearchRadius), (int) (2 * largeSearchRadius));
-        List<Place> results = query(searchArea, new ArrayList<>());
-        MaxHeap maxHeap = new MaxHeap(k, userX, userY);
-
-        for (int i = 0; i < results.size(); i++) {
-            Place place = results.get(i);
-            if (place.offersService(serviceType)) {
-                int[] loc = new int[]{place.x, place.y};
-                maxHeap.offer(loc);
-            }
-        }
-
-        ArrayList<Place> topKResults = new ArrayList<>();
-        while (!maxHeap.isEmpty() && topKResults.size() < k) {
-            int[] location = maxHeap.poll();
-            topKResults.add(new Place(location[0], location[1])); // Simplified for context
-        }
-
-        return topKResults;
-    }
-
-    private double distance(int x1, int y1, int x2, int y2) {
-        return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-    }
-
-    private boolean intersects(int otherX, int otherY, int otherWidth, int otherHeight) {
-        return !(otherX > x + width || otherX + otherWidth < x || otherY > y + height || otherY + otherHeight < y);
+    private boolean intersects(Rectangle searchArea) {
+        return !(searchArea.x + searchArea.width < this.x ||
+                searchArea.x > this.x + this.width ||
+                searchArea.y + searchArea.height < this.y ||
+                searchArea.y > this.y + this.height);
     }
 }
