@@ -49,6 +49,7 @@ public class Main {
 
         // Testing addService
         Place testPlace = new Place(100, 100);
+        testPlace.addService(ServiceType.GAS_STATION);
         quadTree.insert(additionalPlace);
         Place placeToAddService = testPlace;
         runtime.gc();
@@ -75,18 +76,18 @@ public class Main {
         System.out.println("Remove service time: " + (endTime - startTime) + " ms");
         System.out.println("Memory used for removing service: " + ((endMemoryUse - startMemoryUse) / 1024) + " KB");
 
-        // Testing query
-        Rectangle queryRectangle = new Rectangle(0, 0, 5000, 5000);
-        runtime.gc();
-        startMemoryUse = runtime.totalMemory() - runtime.freeMemory();
-        startTime = System.currentTimeMillis();
-
-        List<Place> foundPlaces = quadTree.query(queryRectangle, new ArrayList<>());
-
-        endTime = System.currentTimeMillis();
-        endMemoryUse = runtime.totalMemory() - runtime.freeMemory();
-        System.out.println("Query time: " + (endTime - startTime) + " ms");
-        System.out.println("Memory used for query: " + ((endMemoryUse - startMemoryUse) / 1024) + " KB");
-        System.out.println("Number of places found: " + foundPlaces.size());
+//        // Testing query
+//        Rectangle queryRectangle = new Rectangle(0, 0, 5000, 5000);
+//        runtime.gc();
+//        startMemoryUse = runtime.totalMemory() - runtime.freeMemory();
+//        startTime = System.currentTimeMillis();
+//
+//        List<Place> foundPlaces = quadTree.query(queryRectangle, new ArrayList<>());
+//
+//        endTime = System.currentTimeMillis();
+//        endMemoryUse = runtime.totalMemory() - runtime.freeMemory();
+//        System.out.println("Query time: " + (endTime - startTime) + " ms");
+//        System.out.println("Memory used for query: " + ((endMemoryUse - startMemoryUse) / 1024) + " KB");
+//        System.out.println("Number of places found: " + foundPlaces.size());
     }
 }

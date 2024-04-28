@@ -1,3 +1,6 @@
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 /**
  * A simple implementation of a list using a dynamic array to store elements.
  * This custom ArrayList class mimics some of the functionalities of the Java Collection Framework's ArrayList,
@@ -86,6 +89,35 @@ public class ArrayList<E> implements List<E> {
         return (E) elements[index];
     }
 
+    public boolean get(E element) {
+        for (int i = 0; i < size; i++) {
+            if (element.equals(elements[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Iterator<E> iterator() {
+        return new Iterator<E>() {
+            private int currentIndex = 0;
+
+            @Override
+            public boolean hasNext() {
+                return currentIndex < size;
+            }
+
+            @Override
+            public E next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                return (E) elements[currentIndex++];
+            }
+        };
+    }
+
     /**
      * Replaces the element at the specified position in this list with the specified element.
      *
@@ -141,5 +173,9 @@ public class ArrayList<E> implements List<E> {
     @Override
     public int size() {
         return size;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
     }
 }

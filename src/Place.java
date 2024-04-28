@@ -19,4 +19,13 @@ public class Place {
     public boolean offersService(ServiceType service) {
         return (services & (1L << service.ordinal())) != 0;
     }
+
+    public ServiceType getPrimaryService() {
+        for (ServiceType service : ServiceType.values()) {
+            if (offersService(service)) {
+                return service;
+            }
+        }
+        return null;
+    }
 }
