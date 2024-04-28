@@ -1,3 +1,6 @@
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 /**
  * A simple implementation of a list using a dynamic array to store elements.
  * This custom ArrayList class mimics some of the functionalities of the Java Collection Framework's ArrayList,
@@ -5,7 +8,7 @@
  *
  * @param <E> the type of elements in this list
  */
-public class ArrayList<E> implements List<E> {
+public class ArrayList<E> implements List<E>, Iterable<E> {
     private Object[] elements; // The array buffer into which the elements of the ArrayList are stored.
     private int size = 0; // The current number of elements contained in the ArrayList.
     private static final int DEFAULT_CAPACITY = 10; // Default initial capacity of the ArrayList.
@@ -86,6 +89,29 @@ public class ArrayList<E> implements List<E> {
         return (E) elements[index];
     }
 
+    @Override
+    public boolean get(E element) {
+        int index = indexOf(element);
+        return index != -1;
+    }
+
+    /**
+     * Adds all of the elements in the specified collection to this list.
+     *
+     * @param c the collection containing elements to be added to this list
+     * @return true if this list changed as a result of the call
+     */
+    @Override
+    public boolean addAll(Iterable<? extends E> c) {
+        Iterator<? extends E> it = c.iterator();
+        boolean modified = false;
+        while (it.hasNext()) {
+            add(it.next());
+            modified = true;
+        }
+        return modified;
+    }
+
     /**
      * Replaces the element at the specified position in this list with the specified element.
      *
@@ -141,5 +167,33 @@ public class ArrayList<E> implements List<E> {
     @Override
     public int size() {
         return size;
+    }
+
+    @Override
+    public Iterator<E> iterator() {
+        return new Iterator<E>() {
+            private int currentIndex = 0;
+
+            @Override
+            public boolean hasNext() {
+                return currentIndex < size;
+            }
+
+            @Override
+            public E next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                return (E) elements[currentIndex++];
+            }
+
+            @Override
+            public void remove() {
+                if (currentIndex == 0) {
+                    throw new IllegalStateException();
+                }
+                ArrayList.this.removeAt(currentIndex - 1);
+            }
+        };
     }
 }

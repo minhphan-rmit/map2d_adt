@@ -5,7 +5,7 @@
  *
  * @param <E> the type of elements in this list
  */
-public interface List<E> {
+public interface List<E> extends Iterable<E> {
     /**
      * Adds an element to the list.
      * This method is intended to append the specified element to the end of the list.
@@ -56,4 +56,8 @@ public interface List<E> {
      * The list will be empty after this call returns.
      */
     void clear();
+
+    boolean get(E element);
+
+    boolean addAll(Iterable<? extends E> c);
 }
