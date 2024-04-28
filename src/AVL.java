@@ -1,156 +1,132 @@
 public class AVL<T extends Comparable<T>> extends BST<T> {
-    // return the height of the tree
-    public int treeHeight() {
-        if (root == null) {
-            return 0;
-        }
-        return root.height;
-    }
 
     @Override
     public BinaryTreeNode<T> add(T value) {
         BinaryTreeNode<T> newNode = super.add(value);
-        rebalanceUp(newNode);
-        // displayTreePreOrder(root);
+        rebalance(newNode);
         return newNode;
-    }
-
-    public void displayTreePreOrder(BinaryTreeNode<T> n) {
-        if (n != null) {
-            System.out.print("Node: " + n.data);
-            if (n.parent != null) {
-                System.out.println(" -> " + n.parent.data);
-            } else {
-                System.out.println();
-            }
-            displayTreePreOrder(n.left);
-            displayTreePreOrder(n.right);
-        }
     }
 
     @Override
     public BinaryTreeNode<T> remove(T value) {
-        BinaryTreeNode<T> removeParent = super.remove(value);
-        rebalanceUp(removeParent);
-        return removeParent;
+        BinaryTreeNode<T> node = search(value);
+        if (node == null) return null;
+
+        BinaryTreeNode<T> parent = node.parent;
+        BinaryTreeNode<T> replaceNode = removeNode(node);
+        rebalance(parent != null ? parent : replaceNode);
+        return replaceNode;
     }
 
-    // rebalance a node upward the tree
-    // until root is reached or no more step needed
-    // update heights of sub-trees at the same time
-    private void rebalanceUp(BinaryTreeNode<T> node) {
-        // recursively rebalance upward
+    private void rebalance(BinaryTreeNode<T> node) {
         while (node != null) {
-            node.updateHeight();
-            node = balanceNode(node);
+            updateHeight(node);
+            node = balance(node);
             node = node.parent;
         }
     }
 
-    // balance around a given node
-    // and return the new node at that location
-    private BinaryTreeNode<T> balanceNode(BinaryTreeNode<T> node) {
-        int bf = node.getBalanceFactor();
-        if (bf < -1) {
-            BinaryTreeNode<T> leftChild = node.left;
-            int bf2 = leftChild.getBalanceFactor();
-            if (bf2 < 0) {
-                return rotateRight(node);
-            } else {
-                rotateLeft(leftChild);
-                return rotateRight(node);
+    private BinaryTreeNode<T> balance(BinaryTreeNode<T> node) {
+        if (node == null) return null;
+
+        int balanceFactor = getBalanceFactor(node);
+        if (balanceFactor > 1) {
+            if (getBalanceFactor(node.right) < 0) {
+                node.right = rotateRight(node.right);
             }
-        } else if (bf > 1) {
-            BinaryTreeNode<T> rightChild = node.right;
-            int bf2 = rightChild.getBalanceFactor();
-            if (bf2 > 0) {
-                return rotateLeft(node);
-            } else {
-                rotateRight(rightChild);
-                return rotateLeft(node);
+            return rotateLeft(node);
+        } else if (balanceFactor < -1) {
+            if (getBalanceFactor(node.left) > 0) {
+                node.left = rotateLeft(node.left);
             }
+            return rotateRight(node);
         }
         return node;
     }
 
-    // rotate right around the sub-stree rooted at node
-    // and return the new root
-    public BinaryTreeNode<T> rotateRight(BinaryTreeNode<T> node) {
-        BinaryTreeNode<T> parent = node.parent;
-        BinaryTreeNode<T> leftChild = node.left;
-        BinaryTreeNode<T> rightOfLeftChild = leftChild.right;
+    private BinaryTreeNode<T> rotateRight(BinaryTreeNode<T> y) {
+        BinaryTreeNode<T> x = y.left;
+        BinaryTreeNode<T> T2 = x.right;
 
-        leftChild.right = node;
-        node.parent = leftChild;
+        x.right = y;
+        y.left = T2;
 
-        node.left = rightOfLeftChild;
-        if (rightOfLeftChild != null) {
-            rightOfLeftChild.parent = node;
+        if (T2 != null) {
+            T2.parent = y;
         }
 
-        if (parent != null) {
-            if (node == parent.left) {
-                parent.left = leftChild;
-            } else {
-                parent.right = leftChild;
-            }
-            leftChild.parent = parent;
-        } else {
-            leftChild.parent = null;
-            root = leftChild;
+        x.parent = y.parent;
+        y.parent = x;
+
+        if (x.parent == null) {
+            root = x;
+        } else if (x.parent.right == y) {
+            x.parent.right = x;
+        } else if (x.parent.left == y) {
+            x.parent.left = x;
         }
-        node.updateHeight();
-        leftChild.updateHeight();
-        return leftChild;
+
+        updateHeight(y);
+        updateHeight(x);
+
+        return x;
     }
 
-    // rotate left around the sub-stree rooted at node
-    // and return the new root
-    public BinaryTreeNode<T> rotateLeft(BinaryTreeNode<T> node) {
-        BinaryTreeNode<T> parent = node.parent;
-        BinaryTreeNode<T> rightChild = node.right;
-        BinaryTreeNode<T> leftOfRightChild = rightChild.left;
+    private BinaryTreeNode<T> rotateLeft(BinaryTreeNode<T> x) {
+        BinaryTreeNode<T> y = x.right;
+        BinaryTreeNode<T> T2 = y.left;
 
-        rightChild.left = node;
-        node.parent = rightChild;
+        y.left = x;
+        x.right = T2;
 
-        node.right = leftOfRightChild;
-        if (leftOfRightChild != null) {
-            leftOfRightChild.parent = node;
+        if (T2 != null) {
+            T2.parent = x;
         }
 
-        if (parent != null) {
-            if (node == parent.left) {
-                parent.left = rightChild;
-            } else {
-                parent.right = rightChild;
-            }
-            rightChild.parent = parent;
-        } else {
-            rightChild.parent = null;
-            root = rightChild;
+        y.parent = x.parent;
+        x.parent = y;
+
+        if (y.parent == null) {
+            root = y;
+        } else if (y.parent.right == x) {
+            y.parent.right = y;
+        } else if (y.parent.left == x) {
+            y.parent.left = y;
         }
-        node.updateHeight();
-        rightChild.updateHeight();
-        return rightChild;
+
+        updateHeight(x);
+        updateHeight(y);
+
+        return y;
     }
 
-    // Public interface to perform in-order traversal
+    private int getBalanceFactor(BinaryTreeNode<T> node) {
+        if (node == null) return 0;
+        return height(node.right) - height(node.left);
+    }
+
+    private int height(BinaryTreeNode<T> node) {
+        return node == null ? 0 : node.getHeight();
+    }
+
+    private void updateHeight(BinaryTreeNode<T> node) {
+        node.updateHeight();
+    }
+
+    // Assuming Rectangle and Place types are defined elsewhere
     public void inOrderCollect(Rectangle range, List<Place> found) {
         inOrderCollectPlaces(root, range, found);
     }
 
-    // Private helper method to perform in-order traversal
     private void inOrderCollectPlaces(BinaryTreeNode<T> node, Rectangle range, List<Place> found) {
-        if (node != null) {
-            inOrderCollectPlaces(node.left, range, found);
-            if (node.data instanceof Place) {
-                Place place = (Place) node.data;
-                if (range.contains(place.x, place.y)) {
-                    found.add(place);
-                }
+        if (node == null) return;
+        inOrderCollectPlaces(node.left, range, found);
+        if (node.data instanceof Place) {
+            Place place = (Place) node.data;
+            if (range.contains(place.x, place.y)) {
+                found.add(place);
             }
-            inOrderCollectPlaces(node.right, range, found);
         }
+        inOrderCollectPlaces(node.right, range, found);
     }
 }

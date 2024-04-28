@@ -1,5 +1,5 @@
 public class QuadTree {
-    private static final int MAX_CAPACITY = 50_000_000;
+    private static final int MAX_CAPACITY = 60_000_000;
     private final int level;
     private final int x, y, width, height;
     private final QuadTree[] children;
