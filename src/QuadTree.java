@@ -1,9 +1,9 @@
 public class QuadTree {
-    private static final int MAX_CAPACITY = 100_000_000;
+    private static final int MAX_CAPACITY = 50_000_000;
     private final int level;
-    private final List<Place> places;
     private final int x, y, width, height;
     private final QuadTree[] children;
+    private AVL<Place> places;
 
     public QuadTree(int level, int x, int y, int width, int height) {
         this.level = level;
@@ -11,9 +11,9 @@ public class QuadTree {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.places = new ArrayList<>();
+        this.places = new AVL<>();
         this.children = new QuadTree[4];
-        init();
+        init(); // Ensure this handles the recursive splitting logic if needed
     }
 
     private void init() {
@@ -38,16 +38,13 @@ public class QuadTree {
 
     public void insert(Place place) {
         if (!contains(place.x, place.y)) {
-            throw new IllegalArgumentException("Place is out of the bounds of the quad tree");
+            throw new IllegalArgumentException("Place is out of bounds of the quad tree");
         }
-        if (children[0] != null) {
+        if (children[0] == null) { // No children, insert here
+            places.add(place);
+        } else { // Otherwise, find the correct child to insert into
             int index = getIndex(place.x, place.y);
             children[index].insert(place);
-        } else {
-            if (places.size() >= MAX_CAPACITY) {
-                throw new RuntimeException("Exceeded maximum capacity at a single point");
-            }
-            places.add(place);
         }
     }
 
@@ -72,20 +69,13 @@ public class QuadTree {
         if (!contains(place.x, place.y)) {
             return false;
         }
-
-        for (int i = 0; i < places.size(); i++) {
-            if (places.get(i).equals(place)) {
-                places.removeAt(i);
-                return true;
-            }
-        }
-
-        if (children[0] != null) {
+        if (children[0] == null) {
+            // Use the AVL remove method
+            return places.remove(place) != null;
+        } else {
             int index = getIndex(place.x, place.y);
             return children[index].delete(place);
         }
-
-        return false;
     }
 
     public boolean addService(Place place, ServiceType service) {
@@ -113,12 +103,12 @@ public class QuadTree {
             return false;
         }
 
-        for (int i = 0; i < node.places.size(); i++) {
-            if (node.places.get(i).equals(target)) {
-                return true;
-            }
+        // Check the current node's AVL tree
+        if (node.places.search(target) != null) {
+            return true; // Found the target in the current node's AVL
         }
 
+        // Otherwise, move on to the correct child node
         if (node.children[0] != null) {
             int index = node.getIndex(target.x, target.y);
             return findPlaceHelper(target, node.children[index]);
@@ -131,75 +121,18 @@ public class QuadTree {
         if (!intersects(range.x, range.y, range.width, range.height)) {
             return found;
         }
+        // Collect places from the current node's AVL tree
+        places.inOrderCollect(range, found);
 
-        for (int i = 0; i < places.size(); i++) {
-            Place place = places.get(i);
-            if (range.contains(place.x, place.y)) {
-                found.add(place);
-            }
-        }
-
+        // Recursively collect from children if they exist
         if (children[0] != null) {
             for (QuadTree child : children) {
                 child.query(range, found);
             }
         }
-
         return found;
     }
 
-    public List<Place> boundedQuery(int userX, int userY, double maxDistance, ServiceType serviceType) {
-        int radius = (int) maxDistance;
-        Rectangle searchArea = new Rectangle(userX - radius, userY - radius, 2 * radius, 2 * radius);
-        List<Place> results = query(searchArea, new ArrayList<>());
-        ArrayList<Place> filteredResults = new ArrayList<>();
-        for (int i = 0; i < results.size(); i++) {
-            Place place = results.get(i);
-            if (place.offersService(serviceType) && distance(userX, userY, place.x, place.y) <= maxDistance) {
-                filteredResults.add(place);
-            }
-        }
-        // Selection sort by distance for simplicity
-        for (int i = 0; i < filteredResults.size() - 1; i++) {
-            int minIdx = i;
-            for (int j = i + 1; j < filteredResults.size(); j++) {
-                if (distance(userX, userY, filteredResults.get(j).x, filteredResults.get(j).y) < distance(userX, userY, filteredResults.get(minIdx).x, filteredResults.get(minIdx).y)) {
-                    minIdx = j;
-                }
-            }
-            Place temp = filteredResults.get(minIdx);
-            filteredResults.set(minIdx, filteredResults.get(i));
-            filteredResults.set(i, temp);
-        }
-        return filteredResults;
-    }
-
-    public List<Place> serviceQuery(int userX, int userY, ServiceType serviceType, int k) {
-        double largeSearchRadius = 10000;  // Arbitrary large radius
-        Rectangle searchArea = new Rectangle(userX - (int) largeSearchRadius, userY - (int) largeSearchRadius, (int) (2 * largeSearchRadius), (int) (2 * largeSearchRadius));
-        List<Place> results = query(searchArea, new ArrayList<>());
-        MaxHeap maxHeap = new MaxHeap(k, userX, userY);
-
-        for (int i = 0; i < results.size(); i++) {
-            Place place = results.get(i);
-            if (place.offersService(serviceType)) {
-                int[] loc = new int[]{place.x, place.y};
-                maxHeap.offer(loc);
-            }
-        }
-
-        ArrayList<Place> topKResults = new ArrayList<>();
-        while (!maxHeap.isEmpty() && topKResults.size() < k) {
-            int[] location = maxHeap.poll();
-            topKResults.add(new Place(location[0], location[1])); // Simplified for context
-        }
-
-        return topKResults;
-    }
-
-    private double distance(int x1, int y1, int x2, int y2) {
-        return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-    }
 
     private boolean intersects(int otherX, int otherY, int otherWidth, int otherHeight) {
         return !(otherX > x + width || otherX + otherWidth < x || otherY > y + height || otherY + otherHeight < y);

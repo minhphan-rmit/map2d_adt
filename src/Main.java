@@ -1,7 +1,7 @@
 import java.util.Random;
 
 public class Main {
-    private static final int NUM_POINTS = 100_000_000; // Adjust the number for practical testing
+    private static final int NUM_POINTS = 50_000_000; // Adjust the number for practical testing
     private static final int MAX_COORDINATE = 10_000_000; // Maximum coordinate value
     public static Random random = new Random();
 
