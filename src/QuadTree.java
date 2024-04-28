@@ -1,5 +1,5 @@
 public class QuadTree {
-    private static final int MAX_CAPACITY = 10_000_000;
+    private static final int MAX_CAPACITY = 50_000_000;
     private final int level;
     private final KDTree places; // Using KDTree instead of List<Place>
     private final int x, y, width, height;
