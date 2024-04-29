@@ -1,9 +1,8 @@
 /**
- * Represents a 2D map for managing geographical locations where each location can offer various services.
- * This implementation uses a KD-Tree to efficiently handle spatial queries such as nearest neighbor searches.
+ * Represents a 2D map for managing geographical locations with spatial queries support using KD-Tree structure.
  */
 public class KDTree {
-    private KDTreeNode root = null;
+    private KDTreeNode root;
 
     public void add(Place place) {
         root = add(root, place, true);
@@ -13,14 +12,13 @@ public class KDTree {
         if (node == null) {
             return new KDTreeNode(place);
         }
-
-        if (vertical ? place.x < node.getPlace().x : place.y < node.getPlace().y) {
+        int cmp = vertical ? Integer.compare(place.x, node.place.x) : Integer.compare(place.y, node.place.y);
+        if (cmp < 0) {
             node.left = add(node.left, place, !vertical);
         } else {
             node.right = add(node.right, place, !vertical);
         }
-
-        return balance(node, vertical);
+        return balance(node);
     }
 
     public boolean delete(int x, int y) {
@@ -32,72 +30,33 @@ public class KDTree {
     }
 
     private KDTreeNode delete(KDTreeNode node, int x, int y, boolean vertical) {
-        if (node == null) {
-            return null;
-        }
-
-        if (node.getPlace().isEqual(x, y)) {
-            if (node.left == null || node.right == null) {
-                return node.left != null ? node.left : node.right;
-            } else {
-                KDTreeNode min = findMin(node.right, !vertical);
-                node.getPlace().x = min.getPlace().x;
-                node.getPlace().y = min.getPlace().y;
-                node.getPlace().services = min.getPlace().services;
-                node.right = delete(node.right, min.getPlace().x, min.getPlace().y, !vertical);
-            }
-        } else if (vertical ? x < node.getPlace().x : y < node.getPlace().y) {
-            node.left = delete(node.left, x, y, !vertical);
-        } else {
-            node.right = delete(node.right, x, y, !vertical);
-        }
-
-        return balance(node, vertical);
-    }
-
-    private KDTreeNode rotateRight(KDTreeNode y) {
-        KDTreeNode x = y.left;
-        y.left = x.right;
-        x.right = y;
-        y.updateHeight();
-        x.updateHeight();
-        return x;
-    }
-
-    private KDTreeNode rotateLeft(KDTreeNode x) {
-        KDTreeNode y = x.right;
-        x.right = y.left;
-        y.left = x;
-        x.updateHeight();
-        y.updateHeight();
-        return y;
-    }
-
-    private KDTreeNode balance(KDTreeNode node, boolean vertical) {
         if (node == null) return null;
-        node.updateHeight();
-        int balance = node.getBalance();
 
-        if (balance > 1) {
-            if (node.left.getBalance() < 0) {
-                node.left = rotateLeft(node.left);
+        if (node.place.isEqual(x, y)) {
+            if (node.left == null || node.right == null) {
+                return (node.left != null) ? node.left : node.right;
             }
-            return rotateRight(node);
-        } else if (balance < -1) {
-            if (node.right.getBalance() > 0) {
-                node.right = rotateRight(node.right);
+            KDTreeNode min = findMin(node.right, !vertical);
+            node.place = min.place;
+            node.right = delete(node.right, min.place.x, min.place.y, !vertical);
+        } else {
+            int cmp = vertical ? Integer.compare(x, node.place.x) : Integer.compare(y, node.place.y);
+            if (cmp < 0) {
+                node.left = delete(node.left, x, y, !vertical);
+            } else {
+                node.right = delete(node.right, x, y, !vertical);
             }
-            return rotateLeft(node);
         }
-        return node;
+        return balance(node);
     }
 
     private KDTreeNode findMin(KDTreeNode node, boolean vertical) {
-        KDTreeNode current = node;
-        while (current.left != null) {
-            current = current.left;
+        if (node == null) return null;
+        if (vertical) {
+            return (node.left != null) ? findMin(node.left, vertical) : node;
+        } else {
+            return (node.right != null) ? findMin(node.right, vertical) : node;
         }
-        return current;
     }
 
     public boolean addServiceToPoint(int x, int y, ServiceType service) {
@@ -118,69 +77,63 @@ public class KDTree {
         return false;
     }
 
+    private KDTreeNode rotateRight(KDTreeNode y) {
+        KDTreeNode x = y.left;
+        y.left = x.right;
+        x.right = y;
+        x.updateHeight();
+        y.updateHeight();
+        return x;
+    }
+
+    private KDTreeNode rotateLeft(KDTreeNode y) {
+        KDTreeNode x = y.right;
+        y.right = x.left;
+        x.left = y;
+        x.updateHeight();
+        y.updateHeight();
+        return x;
+    }
+
+    private KDTreeNode balance(KDTreeNode node) {
+        if (node == null) return null;
+        node.updateHeight();
+        int balanceFactor = node.getBalance();
+
+        if (balanceFactor > 1) {
+            if (node.left.getBalance() < 0) {
+                node.left = rotateLeft(node.left);
+            }
+            return rotateRight(node);
+        } else if (balanceFactor < -1) {
+            if (node.right.getBalance() > 0) {
+                node.right = rotateRight(node.right);
+            }
+            return rotateLeft(node);
+        }
+        return node;
+    }
+
     private KDTreeNode findNode(KDTreeNode node, int x, int y) {
-        if (node == null) {
-            return null;
+        while (node != null) {
+            int cmpX = Integer.compare(x, node.place.x);
+            int cmpY = Integer.compare(y, node.place.y);
+            if (node.place.isEqual(x, y)) {
+                return node;
+            }
+            if ((cmpX < 0) || (cmpX == 0 && cmpY < 0)) {
+                node = node.left;
+            } else {
+                node = node.right;
+            }
         }
-        if (node.getPlace().isEqual(x, y)) {
-            return node;
-        } else if ((x < node.getPlace().x) || (x == node.getPlace().x && y < node.getPlace().y)) {
-            return findNode(node.left, x, y);
-        } else {
-            return findNode(node.right, x, y);
-        }
+        return null;
     }
 
-    // Method to find places by service within walking distance
-    public ArrayList<int[]> findPlacesByService(int currentX, int currentY, double walkingDistance, ServiceType serviceType) {
-        // Calculate the boundary based on walking distance
-        Rectangle searchArea = new Rectangle(currentX - (int) walkingDistance, currentY - (int) walkingDistance,
-                (int) (2 * walkingDistance), (int) (2 * walkingDistance));
-
-        // Retrieve places within the boundary that offer the specified service
-        ArrayList<int[]> results = new ArrayList<>();
-        searchByServiceWithinBounds(root, searchArea, serviceType, results);
-        return results;
-    }
-
-    // Helper method to perform the search within bounds
-    private void searchByServiceWithinBounds(KDTreeNode node, Rectangle bounds, ServiceType serviceType, ArrayList<int[]> results) {
-        if (node == null) return;
-
-        int x = node.getPlace().x;
-        int y = node.getPlace().y;
-
-        // Check if the node's point is within the bounds and offers the service
-        if (bounds.contains(x, y) && node.getPlace().offersService(serviceType)) {
-            results.add(new int[]{x, y});
-        }
-
-        // Continue the search in the appropriate subtrees
-        if (node.left != null && bounds.intersectsLeft(node.getPlace().x)) {
-            searchByServiceWithinBounds(node.left, bounds, serviceType, results);
-        }
-        if (node.right != null && bounds.intersectsRight(node.getPlace().x)) {
-            searchByServiceWithinBounds(node.right, bounds, serviceType, results);
-        }
-    }
-
-    /**
-     * Searches for all points within a specified rectangle that offer a given service.
-     * @param bounds The search area as a Rectangle object.
-     * @param serviceType The type of service to look for.
-     * @param found The list where results are added.
-     */
     public void searchByServiceWithinBounds(Rectangle bounds, ServiceType serviceType, List<int[]> found) {
         searchByServiceWithinBounds(root, bounds, serviceType, found);
     }
 
-    /**
-     * Helper method to recursively search for points offering a specified service within bounds.
-     * @param node The current node being checked.
-     * @param bounds The search area as a Rectangle object.
-     * @param serviceType The type of service to look for.
-     * @param found The list where results are added.
-     */
     private void searchByServiceWithinBounds(KDTreeNode node, Rectangle bounds, ServiceType serviceType, List<int[]> found) {
         if (node == null) return;
 
@@ -202,43 +155,28 @@ public class KDTree {
     }
 }
 
-    /**
- * Represents a node in the KD-Tree.
- */
 class KDTreeNode {
-    private Place place;
-    KDTreeNode left = null, right = null;
+    Place place;
+    KDTreeNode left, right;
     private int height = 1;
 
     public KDTreeNode(Place place) {
         this.place = place;
     }
 
-    public Place getPlace() {
-        return place;
-    }
-
-    public void setPlace(Place place) {
-        this.place = place;
-    }
-
-    public int getHeight() {
-        return height;
+    public int getHeight(KDTreeNode node) {
+        return (node == null) ? 0 : node.height;
     }
 
     public void updateHeight() {
-        height = 1 + Math.max(getHeight(left), getHeight(right));
-    }
-
-    private static int getHeight(KDTreeNode node) {
-        return node == null ? 0 : node.height;
+        this.height = 1 + Math.max(getHeight(left), getHeight(right));
     }
 
     public int getBalance() {
         return getHeight(left) - getHeight(right);
     }
 
-    public boolean isEqual(int x, int y) {
-        return place.x == x && place.y == y;
+    public Place getPlace() {
+        return place;
     }
 }

@@ -1,27 +1,33 @@
 public class QuadTree {
-    private static final int MAX_CAPACITY = 50_000_000;
+    private static final int MAX_CAPACITY = 100_000_000;
+    private final int maxDepth;  // New field to store maximum depth
     private final int level;
-    private final KDTree places; // Using KDTree instead of List<Place>
+    private final KDTree places;
     private final int x, y, width, height;
-    private final QuadTree[] children;
+    private QuadTree[] children;
 
-    public QuadTree(int level, int x, int y, int width, int height) {
+    // Updated constructor to accept maxDepth
+    public QuadTree(int level, int x, int y, int width, int height, int maxDepth) {
         this.level = level;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.places = new KDTree(); // Initialize KDTree here
+        this.places = new KDTree();
+        this.maxDepth = maxDepth;
         this.children = new QuadTree[4];
         init();
     }
 
     private void init() {
-        if (width * height / MAX_CAPACITY > 1 && width > 1 && height > 1) {
+        if (level < maxDepth && width > 1 && height > 1) {
+            System.out.println("Splitting at level " + level + " with boundary [" + x + ", " + y + ", " + (x + width) + ", " + (y + height) + "]");
             split();
             for (QuadTree child : children) {
                 child.init(); // Initialize each child recursively
             }
+        } else {
+            System.out.println("Leaf node at level " + level + " with boundary [" + x + ", " + y + ", " + (x + width) + ", " + (y + height) + "]");
         }
     }
 
@@ -29,10 +35,10 @@ public class QuadTree {
         int subWidth = width / 2;
         int subHeight = height / 2;
 
-        children[0] = new QuadTree(level + 1, x + subWidth, y, subWidth, subHeight);
-        children[1] = new QuadTree(level + 1, x, y, subWidth, subHeight);
-        children[2] = new QuadTree(level + 1, x, y + subHeight, subWidth, subHeight);
-        children[3] = new QuadTree(level + 1, x + subWidth, y + subHeight, subWidth, subHeight);
+        children[0] = new QuadTree(level + 1, x + subWidth, y, subWidth, subHeight, maxDepth);
+        children[1] = new QuadTree(level + 1, x, y, subWidth, subHeight, maxDepth);
+        children[2] = new QuadTree(level + 1, x, y + subHeight, subWidth, subHeight, maxDepth);
+        children[3] = new QuadTree(level + 1, x + subWidth, y + subHeight, subWidth, subHeight, maxDepth);
     }
 
     public void insert(Place place) {
@@ -43,7 +49,7 @@ public class QuadTree {
             int index = getIndex(place.x, place.y);
             children[index].insert(place);
         } else {
-            places.add(place); // Adding to KDTree
+            places.add(place);
         }
     }
 
@@ -56,7 +62,7 @@ public class QuadTree {
             int index = getIndex(place.x, place.y);
             return children[index].delete(place);
         } else {
-            return places.delete(place.x, place.y); // Using KDTree for deletion
+            return places.delete(place.x, place.y);
         }
     }
 
@@ -98,10 +104,8 @@ public class QuadTree {
         }
 
         if (children[0] == null) {
-            // If this is a leaf node, use the KDTree to perform a refined search
             places.searchByServiceWithinBounds(range, serviceType, found);
         } else {
-            // Otherwise, recursively query the appropriate children
             for (QuadTree child : children) {
                 child.query(range, serviceType, found);
             }
